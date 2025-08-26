@@ -1,0 +1,499 @@
+<meta charset="UTF-8" />
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    background: #f4f4f4;
+    padding: 20px;
+    direction: rtl;
+    transition: background 0.3s;
+  }
+  body.dark-mode {
+    background: #222;
+    color: #fff;
+  }
+  h1 {
+    color: #333;
+  }
+  body.dark-mode h1 {
+    color: #ddd;
+  }
+  #results {
+    margin-top: 20px;
+    max-height: 400px;
+    overflow-y: auto;
+    background: #fff;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  }
+  body.dark-mode #results {
+    background: #333;
+    color: #ddd;
+  }
+  .ok { color: green; }
+  .bad { color: red; }
+  .warning { color: orange; }
+  button {
+    margin: 10px 5px;
+    padding: 10px 20px;
+    cursor: pointer;
+    border: none;
+    border-radius: 6px;
+    background: #4caf50;
+    color: white;
+    transition: background 0.2s;
+  }
+  button:hover {
+    background: #45a049;
+  }
+  button:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+  }
+  input, select {
+    margin: 5px 0;
+    padding: 8px;
+    width: 100%;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    box-sizing: border-box;
+  }
+  #progressContainer {
+    width: 100%;
+    background: #ddd;
+    border-radius: 10px;
+    margin-top: 15px;
+  }
+  #progressBar {
+    width: 0%;
+    height: 20px;
+    background: #4caf50;
+    border-radius: 10px;
+    text-align: center;
+    color: white;
+    font-size: 12px;
+    transition: width 0.3s ease;
+  }
+  #stats {
+    margin-top: 10px;
+    font-size: 14px;
+    color: #555;
+  }
+  body.dark-mode #stats {
+    color: #bbb;
+  }
+  .toggle-container {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+  }
+  .channel-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+  .channel-item img {
+    width: 80px;
+    height: 80px;
+    margin-left: 10px;
+    object-fit: contain;
+    object-position: center;
+    display: block;
+  }
+  .channel-item span {
+    font-size: 1.2rem;
+    line-height: 1.5;
+  }
+  .play-btn {
+    margin-right: 10px;
+    padding: 5px 10px;
+    background: #2196f3;
+    border-radius: 4px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .play-btn:hover {
+    background: #1976d2;
+  }
+  .play-btn::before {
+    content: '▶';
+    margin-left: 5px;
+  }
+  body.dark-mode .play-btn {
+    background: #42a5f5;
+  }
+  body.dark-mode .play-btn:hover {
+    background: #1e88e5;
+  }
+</style>
+
+<h1>🔍 فحص روابط M3U / M3U8</h1>
+
+<div class="toggle-container">
+  <label>🌙 الوضع المظلم</label>
+  <input type="checkbox" id="darkModeToggle" onchange="toggleDarkMode()">
+</div>
+
+<label>📂 رفع ملف M3U/M3U8</label>
+<input type="file" id="fileInput" accept=".m3u,.m3u8"><br>
+
+<label>🌐 لصق رابط ملف M3U/M3U8</label>
+<input type="text" id="listUrl" placeholder="https://example.com/playlist.m3u8" value="https://iptv-org.github.io/iptv/index.m3u">
+
+<label>📺 لصق رابط قناة واحد</label>
+<input type="text" id="singleUrl" placeholder="https://example.com/channel.m3u8">
+
+<label>🔢 عدد الروابط المراد فحصها</label>
+<input type="number" id="limit" placeholder="مثال: 50" min="1">
+
+<label>🔎 ابحث عن قناة بالاسم</label>
+<input type="text" id="search" placeholder="مثال: bein">
+
+<label>🎥 نوع المحتوى</label>
+<select id="contentType">
+  <option value="all">الكل</option>
+  <option value="video">فيديو</option>
+  <option value="audio">صوت</option>
+</select>
+
+<button onclick="checkM3U()" id="startBtn">✅ ابدأ الفحص / استئناف</button>
+<button onclick="stopCheck()" id="stopBtn" style="display:none; background:#f44336;">⏹️ إيقاف الفحص</button>
+<button onclick="clearResults()" id="clearBtn" style="background:#ff9800;">🗑️ مسح النتائج</button>
+
+<div id="progressContainer">
+  <div id="progressBar">0%</div>
+</div>
+
+<div id="stats">
+  <span>الروابط الصالحة: <span id="validCount">0</span></span> |
+  <span>الروابط غير الصالحة: <span id="invalidCount">0</span></span> |
+  <span>الإجمالي: <span id="totalCount">0</span></span>
+</div>
+
+<div id="results"></div>
+<button id="downloadBtn" style="display:none;" onclick="downloadCleaned('m3u')">⬇️ تنزيل الروابط الصالحة (M3U)</button>
+<button id="downloadJsonBtn" style="display:none;" onclick="downloadCleaned('json')">⬇️ تنزيل كـ JSON</button>
+<button id="downloadCsvBtn" style="display:none;" onclick="downloadCleaned('csv')">⬇️ تنزيل كـ CSV</button>
+
+<script>
+  let validEntries = [];
+  let invalidEntries = [];
+  let stopFlag = false;
+  let urls = [];
+  let currentIndex = 0;
+  let total = 0;
+  let validCount = 0;
+  let invalidCount = 0;
+
+  const defaultImage = "https://via.placeholder.com/80?text=📺";
+
+  window.onload = () => {
+    const savedUrl = localStorage.getItem('lastListUrl');
+    const savedLimit = localStorage.getItem('lastLimit');
+    const savedDarkMode = localStorage.getItem('darkMode') === 'true';
+    const savedState = localStorage.getItem('checkState');
+
+    if (savedUrl) document.getElementById('listUrl').value = savedUrl;
+    if (savedLimit) document.getElementById('limit').value = savedLimit;
+    if (savedDarkMode) {
+      document.getElementById('darkModeToggleFoggle').checked = true;
+      toggleDarkMode();
+    }
+    if (savedState) {
+      const state = JSON.parse(savedState);
+      validEntries = state.validEntries || [];
+      invalidEntries = state.invalidEntries || [];
+      urls = state.urls || [];
+      currentIndex = state.currentIndex || 0;
+      total = state.total || 0;
+      validCount = state.validCount || 0;
+      invalidCount = state.invalidCount || 0;
+      updateStats();
+      updateProgress();
+      restoreResults();
+      showDownloadButtons();
+    }
+  };
+
+  function toggleDarkMode() {
+    document.body.classList.toggle('dark-mode');
+    localStorage.setItem('darkMode', document.body.classList.contains('dark-mode'));
+  }
+
+  function saveState() {
+    const state = {
+      validEntries,
+      invalidEntries,
+      urls,
+      currentIndex,
+      total,
+      validCount,
+      invalidCount
+    };
+    localStorage.setItem('checkState', JSON.stringify(state));
+  }
+
+  function createChannelElement({ channelName, logo, isValid, url }) {
+    if (!isValid) return null;
+    const div = document.createElement('div');
+    div.className = `channel-item ok`;
+    div.innerHTML = `
+      <img src="${logo || defaultImage}" alt="${channelName}" onerror="this.src='${defaultImage}'" style="width: 80px; height: 80px; object-fit: contain;">
+      <span>✅ ${channelName}</span>
+      <button class="play-btn" onclick="playChannel('${url}')">تشغيل</button>
+    `;
+    return div;
+  }
+
+  function preloadImage(url) {
+    return new Promise((resolve) => {
+      if (!url || url.trim() === '') return resolve(defaultImage);
+      const img = new Image();
+      img.src = url;
+      img.onload = () => resolve(url);
+      img.onerror = () => resolve(defaultImage);
+      setTimeout(() => resolve(defaultImage), 3000);
+    });
+  }
+
+  function playChannel(url) {
+    if (url) {
+      window.open(url, '_blank');
+    } else {
+      alert('⚠️ رابط القناة غير متوفر');
+    }
+  }
+
+  async function checkM3U() {
+    stopFlag = false;
+    document.getElementById("stopBtn").style.display = "inline-block";
+    document.getElementById("startBtn").disabled = true;
+    document.getElementById("downloadBtn").style.display = "none";
+    document.getElementById("downloadJsonBtn").style.display = "none";
+    document.getElementById("downloadCsvBtn").style.display = "none";
+
+    if (urls.length === 0) {
+      const file = document.getElementById('fileInput').files[0];
+      const listUrl = document.getElementById('listUrl').value.trim();
+      const singleUrl = document.getElementById('singleUrl').value.trim();
+      const limit = parseInt(document.getElementById('limit').value) || Infinity;
+      const searchTerm = document.getElementById('search').value.trim().toLowerCase();
+      const contentType = document.getElementById('contentType').value;
+
+      localStorage.setItem('lastListUrl', listUrl);
+      localStorage.setItem('lastLimit', limit);
+
+      let text = "";
+      if (file) {
+        text = await file.text();
+      } else if (listUrl) {
+        try {
+          const res = await fetch(listUrl, { timeout: 10000 });
+          if (!res.ok) throw new Error('فشل تحميل الملف');
+          text = await res.text();
+        } catch (e) {
+          alert(`❌ خطأ: ${e.message}`);
+          resetButtons();
+          return;
+        }
+      } else if (singleUrl) {
+        text = "#EXTM3U\n#EXTINF:-1, قناة واحدة\n" + singleUrl;
+      } else {
+        alert("📌 اختر ملف أو أدخل رابط أولاً");
+        resetButtons();
+        return;
+      }
+
+      const lines = text.split(/\r?\n/);
+      const resultsDiv = document.getElementById('results');
+      resultsDiv.innerHTML = "";
+      validEntries = [];
+      invalidEntries = [];
+      urls = [];
+      validCount = 0;
+      invalidCount = 0;
+
+      let allUrls = [];
+      for (let i = 0; i < lines.length; i++) {
+        if (lines[i].startsWith("http")) {
+          let info = lines[i-1] || "";
+          if (!searchTerm || info.toLowerCase().includes(searchTerm)) {
+            if (contentType === 'all' || 
+                (contentType === 'video' && lines[i].includes('.m3u8')) || 
+                (contentType === 'audio' && !lines[i].includes('.m3u8'))) {
+              let channelName = info.includes(',') ? info.split(',')[1].trim() : "قناة غير معروفة";
+              let logo = '';
+              if (info.includes('tvg-logo="')) {
+                const match = info.match(/tvg-logo="([^"]+)"/);
+                if (match) logo = match[1];
+              }
+              allUrls.push({ info, url: lines[i], channelName, checked: false, logo });
+            }
+          }
+        }
+      }
+
+      if (allUrls.length > 0) {
+        const shuffle = (array) => {
+          for (let i = array.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [array[i], array[j]] = [array[j], array[i]];
+          }
+          return array;
+        };
+        urls = shuffle(allUrls).slice(0, Math.min(allUrls.length, limit));
+        total = urls.length;
+      } else {
+        alert("⚠️ لم يتم العثور على روابط مطابقة لمعايير البحث");
+        resetButtons();
+        return;
+      }
+
+      updateStats();
+      saveState();
+    }
+
+    const resultsDiv = document.getElementById('results');
+    const batchSize = 5;
+    const fragment = document.createDocumentFragment();
+
+    while (currentIndex < total && !stopFlag) {
+      const batch = urls.slice(currentIndex, currentIndex + batchSize);
+      const promises = batch.map(async ({ info, url, channelName, logo }, idx) => {
+        if (urls[currentIndex + idx].checked) return;
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 5000);
+          const res = await fetch(url, { method: "HEAD", signal: controller.signal });
+          clearTimeout(timeoutId);
+
+          if (res.ok) {
+            const preloadedLogo = await preloadImage(logo || defaultImage);
+            const channelElement = createChannelElement({ channelName, logo: preloadedLogo, isValid: true, url });
+            if (channelElement) fragment.appendChild(channelElement);
+            validEntries.push(info, url);
+            validCount++;
+          } else {
+            invalidEntries.push({ info, url, error: `حالة: ${res.status}` });
+            invalidCount++;
+          }
+        } catch (e) {
+          const errorMsg = e.name === 'AbortError' ? 'انتهت المهلة' : e.message;
+          invalidEntries.push({ info, url, error: errorMsg });
+          invalidCount++;
+        }
+        urls[currentIndex + idx].checked = true;
+        updateProgress();
+        saveState();
+      });
+
+      await Promise.all(promises);
+      resultsDiv.appendChild(fragment);
+      currentIndex += batchSize;
+      updateStats();
+      saveState();
+      await new Promise(r => setTimeout(r, 200));
+    }
+
+    if (stopFlag) {
+      resetButtons();
+      showDownloadButtons();
+      saveState();
+      return;
+    }
+
+    resetButtons();
+    showDownloadButtons();
+  }
+
+  function restoreResults() {
+    const resultsDiv = document.getElementById('results');
+    resultsDiv.innerHTML = '';
+    const fragment = document.createDocumentFragment();
+    urls.forEach(({ info, url, channelName, checked, logo }) => {
+      if (checked && validEntries.includes(url)) {
+        const channelElement = createChannelElement({ channelName, logo, isValid: true, url });
+        if (channelElement) fragment.appendChild(channelElement);
+      }
+    });
+    resultsDiv.appendChild(fragment);
+  }
+
+  function updateProgress() {
+    const progress = Math.round(((currentIndex + 1) / total) * 100);
+    document.getElementById("progressBar").style.width = progress + "%";
+    document.getElementById("progressBar").innerText = progress + "%";
+  }
+
+  function updateStats() {
+    document.getElementById("validCount").innerText = validCount;
+    document.getElementById("invalidCount"). innerText = invalidCount;
+    document.getElementById("totalCount").innerText = total;
+  }
+
+  function resetButtons() {
+    document.getElementById("stopBtn").style.display = "none";
+    document.getElementById("startBtn").disabled = false;
+  }
+
+  function showDownloadButtons() {
+    if (validEntries.length > 0) {
+      document.getElementById("downloadBtn").style.display = "inline-block";
+      document.getElementById("downloadJsonBtn").style.display = "inline-block";
+      document.getElementById("downloadCsvBtn").style.display = "inline-block";
+    }
+  }
+
+  function stopCheck() {
+    stopFlag = true;
+  }
+
+  function clearResults() {
+    document.getElementById('results').innerHTML = '';
+    validEntries = [];
+    invalidEntries = [];
+    urls = [];
+    validCount = 0;
+    invalidCount = 0;
+    total = 0;
+    currentIndex = 0;
+    updateStats();
+    updateProgress();
+    document.getElementById("downloadBtn").style.display = "none";
+    document.getElementById("downloadJsonBtn").style.display = "none";
+    document.getElementById("downloadCsvBtn").style.display = "none";
+    localStorage.removeItem('checkState');
+  }
+
+  function downloadCleaned(format) {
+    let content, type, filename;
+    if (format === 'm3u') {
+      content = "#EXTM3U\n" + validEntries.join("\n") + "\n";
+      type = "audio/x-mpegurl";
+      filename = "cleaned.m3u";
+    } else if (format === 'json') {
+      const data = [];
+      for (let i = 0; i < validEntries.length; i += 2) {
+        data.push({ info: validEntries[i], url: validEntries[i + 1] });
+      }
+      content = JSON.stringify(data, null, 2);
+      type = "application/json";
+      filename = "cleaned.json";
+    } else if (format === 'csv') {
+      content = "Info,URL\n";
+      for (let i = 0; i < validEntries.length; i += 2) {
+        content += `"${validEntries[i].replace(/"/g, '""')}","${validEntries[i + 1]}"\n`;
+      }
+      type = "text/csv";
+      filename = "cleaned.csv";
+    }
+
+    const blob = new Blob([content], { type });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    link.click();
+  }
+</script>
