@@ -1,0 +1,1656 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IPTV Player المحسن</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <style>
+:root {
+    --accent: #00b4ff;
+    --muted: #aee7ff;
+    --bg1: #0d0d0d;
+    --bg2: #1a1a1a;
+    --error-color: #ff4d4d;
+    --success-color: #4caf50;
+    --warning-color: #ffb300;
+    --border-color: #333;
+    --shadow-color: rgba(0, 180, 255, 0.25);
+    --button-hover: #174f7a;
+    --channel-hover: rgba(33, 150, 243, 0.15);
+    --selected-bg: rgba(244, 67, 54, 0.18);
+}
+
+html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    font-family: 'Tajawal', Arial, sans-serif;
+    background: linear-gradient(135deg, var(--bg1), var(--bg2));
+    color: #fff;
+    overflow-x: hidden;
+}
+
+body {
+    direction: rtl;
+    font-size: 16px;
+    line-height: 1.5;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 20px auto;
+    padding: 15px;
+    border-radius: 12px;
+    background: rgba(0, 0, 0, 0.3);
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+}
+
+.tv-container {
+    width: 100%;
+    aspect-ratio: 16/9;
+    background: #000;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 0 60px var(--shadow-color);
+    position: relative;
+    transition: all 0.3s ease;
+}
+
+.tv-container.fullscreen {
+    width: 100vw;
+    height: 100vh;
+    aspect-ratio: unset;
+    border-radius: 0;
+    margin: 0;
+    z-index: 10000;
+}
+
+video {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    background: #000;
+    display: block;
+}
+
+.video-loading {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 50px;
+    height: 50px;
+    border: 5px solid var(--accent);
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    z-index: 9998;
+}
+
+.status {
+    text-align: center;
+    margin: 15px 0;
+    color: var(--muted);
+    min-height: 24px;
+    font-size: 18px;
+    font-weight: 500;
+    position: relative;
+    padding: 10px;
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.4);
+}
+
+.status.loading::after {
+    content: '';
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 3px solid var(--accent);
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-right: 10px;
+    vertical-align: middle;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    justify-content: center;
+    margin: 15px 0;
+    padding: 10px;
+    background: rgba(0, 0, 0, 0.5);
+    border-radius: 10px;
+}
+
+.controls button, .controls select, .controls input[type="text"], .controls input[type="file"] {
+    background: rgba(0, 0, 0, 0.7);
+    color: #fff;
+    border: 1px solid var(--border-color);
+    padding: 10px 16px;
+    border-radius: 10px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-weight: 500;
+}
+
+.controls button:hover, .controls select:hover, .controls input[type="text"]:hover {
+    transform: scale(1.05);
+    background: var(--button-hover);
+    border-color: var(--accent);
+}
+
+.controls button:focus, .controls select:focus, .controls input:focus {
+    outline: 3px solid var(--accent);
+    outline-offset: 2px;
+}
+
+.controls input[type="file"] {
+    padding: 8px;
+}
+
+.search-main {
+    background: rgba(0, 0, 0, 0.6);
+    padding: 15px;
+    border-radius: 10px;
+    margin-bottom: 15px;
+}
+
+#searchInput, #mainSearchInput {
+    width: 100%;
+    padding: 12px;
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+    background: rgba(255, 255, 255, 0.05);
+    color: #fff;
+    font-size: 16px;
+    margin-bottom: 12px;
+    transition: all 0.3s ease;
+}
+
+#searchInput:focus, #mainSearchInput:focus {
+    border-color: var(--accent);
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.channel-box {
+    background: rgba(0, 0, 0, 0.7);
+    border-radius: 12px;
+    padding: 15px;
+    box-shadow: 0 0 40px var(--shadow-color);
+    margin-top: 15px;
+}
+
+.channel-list {
+    max-height: 400px;
+    overflow-y: auto;
+    padding: 5px;
+    scroll-behavior: smooth;
+    position: relative;
+}
+
+.channel {
+    display: grid;
+    grid-template-columns: 50px 1fr 70px;
+    align-items: center;
+    gap: 12px;
+    padding: 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border-radius: 8px;
+}
+
+.channel:hover {
+    background: var(--channel-hover);
+    transform: translateX(-4px);
+}
+
+.channel-number {
+    width: 50px;
+    text-align: center;
+    font-weight: 700;
+    font-size: 16px;
+    color: var(--accent);
+}
+
+.channel-name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 16px;
+}
+
+.channel-group {
+    font-size: 14px;
+    color: var(--muted);
+    margin-right: 10px;
+}
+
+.channel-move {
+    width: 70px;
+    padding: 8px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    text-align: center;
+    background: rgba(255, 255, 255, 0.05);
+    color: #fff;
+    font-size: 14px;
+}
+
+.channel-move:focus {
+    border-color: var(--accent);
+}
+
+.selected {
+    background: var(--selected-bg) !important;
+    border-left: 4px solid var(--error-color);
+}
+
+.badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 14px;
+    background: var(--accent);
+    color: #06121a;
+    font-weight: 700;
+    font-size: 12px;
+    margin-inline-start: 10px;
+}
+
+#fullscreenControls {
+    position: absolute;
+    bottom: 25px;
+    left: 50%;
+    transform: translateX(-50%);
+    gap: 12px;
+    z-index: 9999;
+    background: rgba(0, 0, 0, 0.7);
+    padding: 15px 25px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    transition: opacity 0.3s ease;
+    opacity: 0;
+    pointer-events: none;
+}
+
+#fullscreenControls.show {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+#fullscreenControls button, #fullscreenControls select {
+    padding: 8px 14px;
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+    color: #fff;
+    background: rgba(0, 0, 0, 0.5);
+    cursor: pointer;
+    font-size: 16px;
+    transition: all 0.3s ease;
+}
+
+#fullscreenControls button:hover, #fullscreenControls select:hover {
+    background: var(--button-hover);
+    transform: scale(1.05);
+}
+
+#fullscreenControls select {
+    width: auto;
+    min-width: 100px;
+}
+
+.controls button#loadTenBtn { background: #4caf50; }
+.controls button#checkLinksBtn { background: #ff5722; }
+.controls button#selectModeBtn { background: #03a9f4; }
+.controls button#deleteSelectedBtn { background: #f44336; }
+.controls button#shuffleChannelsBtn { background: #9c27b0; }
+.controls button#exportM3U { background: #2196f3; }
+.controls button#loadLink { background: #673ab7; }
+.controls button#checkAllLinksBtn { background: #e91e63; }
+.controls button#removeDeadLinksBtn { background: #d81b60; }
+.controls button#favoriteBtn { background: #ff9800; }
+.controls button#showFavoritesBtn { background: #ffca28; }
+.controls button#remoteBtn { background: #2196f3; }
+.controls button#retryBtn { background: #ff5722; }
+.controls button#retryBtn:hover { background: #e64a19; }
+
+.status.error { color: var(--error-color); }
+.status.success { color: var(--success-color); }
+.status.warning { color: var(--warning-color); }
+
+.channel-list::-webkit-scrollbar {
+    width: 10px;
+}
+.channel-list::-webkit-scrollbar-thumb {
+    background: var(--accent);
+    border-radius: 5px;
+}
+.channel-list::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.check-mode {
+    background: rgba(0, 0, 0, 0.6);
+    padding: 10px;
+    border-radius: 10px;
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.check-mode label {
+    font-size: 16px;
+    color: var(--muted);
+    font-weight: 500;
+}
+
+.check-mode select {
+    background: rgba(0, 0, 0, 0.7);
+    color: #fff;
+    border: 1px solid var(--border-color);
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 15px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.check-mode select:hover {
+    background: var(--button-hover);
+    border-color: var(--accent);
+}
+
+.check-mode select:focus {
+    outline: 3px solid var(--accent);
+    outline-offset: 2px;
+}
+
+.remote-container {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0, 0, 0, 0.8);
+    padding: 20px;
+    border-radius: 12px;
+    display: grid;
+    grid-template-columns: repeat(3, 50px);
+    gap: 10px;
+    z-index: 10001;
+    transition: opacity 0.3s ease;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.remote-container.show {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.remote-btn {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    padding: 15px;
+    font-size: 20px;
+    cursor: pointer;
+    border-radius: 8px;
+    text-align: center;
+}
+
+.remote-btn.zero {
+    grid-column: 2;
+}
+
+.remote-display {
+    grid-column: 1 / -1;
+    background: rgba(255, 255, 255, 0.1);
+    padding: 10px;
+    text-align: center;
+    font-size: 18px;
+    color: var(--accent);
+    border-radius: 8px;
+}
+
+@media (max-width: 800px) {
+    .container {
+        margin: 15px;
+        padding: 10px;
+    }
+    .controls {
+        gap: 8px;
+    }
+    .channel-number {
+        width: 40px;
+        font-size: 14px;
+    }
+    .channel-name {
+        font-size: 14px;
+    }
+    .channel-move {
+        width: 60px;
+        font-size: 13px;
+    }
+    #mainSearchInput {
+        width: 80%;
+    }
+}
+
+@media (max-width: 600px) {
+    .controls button, .controls select, .controls input[type="text"] {
+        padding: 8px 12px;
+        font-size: 14px;
+    }
+    #fullscreenControls button, #fullscreenControls select {
+        padding: 6px 12px;
+        font-size: 14px;
+    }
+    .status {
+        font-size: 16px;
+    }
+    .tv-container {
+        border-radius: 8px;
+    }
+    .remote-btn {
+        padding: 10px;
+        font-size: 16px;
+    }
+}
+
+@media (max-width: 400px) {
+    .controls button, .controls select {
+        font-size: 12px;
+        padding: 6px 10px;
+    }
+    .channel-number {
+        width: 30px;
+        font-size: 12px;
+    }
+    .channel-name {
+        font-size: 13px;
+    }
+    #mainSearchInput {
+        width: 100%;
+    }
+    #fullscreenControls {
+        padding: 10px 15px;
+    }
+    .remote-btn {
+        padding: 8px;
+        font-size: 14px;
+    }
+}
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="controls check-mode">
+        <label for="checkModeSelect">وضع تحميل القنوات:</label>
+        <select id="checkModeSelect" aria-label="اختيار وضع تحميل القنوات">
+            <option value="check" selected>فحص الروابط</option>
+            <option value="no-check">بدون فحص</option>
+        </select>
+    </div>
+    <div class="controls search-main">
+        <input type="text" id="mainSearchInput" placeholder="أدخل اسم القناة للبحث الذكي...">
+        <button id="mainSearchBtn" aria-label="بحث وإضافة قنوات"><i class="fas fa-search"></i> بحث ذكي</button>
+    </div>
+
+    <div class="tv-container" id="tv">
+        <video id="videoPlayer" autoplay playsinline></video>
+        <div class="video-loading" id="videoLoading" style="display: none;"></div>
+        <div id="fullscreenControls" class="hide">
+            <button id="fsPrevBtn" aria-label="القناة السابقة"><i class="fas fa-backward"></i></button>
+            <button id="fsPlayBtn" aria-label="تشغيل أو إيقاف مؤقت"><i class="fas fa-play"></i></button>
+            <button id="fsNextBtn" aria-label="القناة التالية"><i class="fas fa-forward"></i></button>
+            <button id="fsMuteBtn" aria-label="كتم أو إلغاء كتم الصوت"><i class="fas fa-volume-up"></i></button>
+            <select id="fsQualitySelect" aria-label="اختيار جودة الفيديو">
+                <option value="auto">Auto</option>
+            </select>
+            <button id="fsFillBtn" aria-label="تبديل وضع ملء الشاشة"><i class="fas fa-expand-arrows-alt"></i></button>
+            <button id="fsVolumeUpBtn" aria-label="زيادة الصوت"><i class="fas fa-volume-high"></i></button>
+            <button id="fsVolumeDownBtn" aria-label="خفض الصوت"><i class="fas fa-volume-low"></i></button>
+            <button id="fsSeekForwardBtn" aria-label="تقديم 10 ثوان"><i class="fas fa-forward-step"></i></button>
+            <button id="fsSeekBackwardBtn" aria-label="ترجيع 10 ثوان"><i class="fas fa-backward-step"></i></button>
+            <button id="fsRemoteBtn" aria-label="عرض ريموت التلفاز"><i class="fas fa-keyboard"></i></button>
+            <button id="exitFsBtn" aria-label="الخروج من وضع ملء الشاشة"><i class="fas fa-compress"></i></button>
+        </div>
+        <div class="remote-container" id="remoteContainer">
+            <div class="remote-display" id="remoteDisplay">---</div>
+            <button class="remote-btn" data-num="1">1</button>
+            <button class="remote-btn" data-num="2">2</button>
+            <button class="remote-btn" data-num="3">3</button>
+            <button class="remote-btn" data-num="4">4</button>
+            <button class="remote-btn" data-num="5">5</button>
+            <button class="remote-btn" data-num="6">6</button>
+            <button class="remote-btn" data-num="7">7</button>
+            <button class="remote-btn" data-num="8">8</button>
+            <button class="remote-btn" data-num="9">9</button>
+            <button class="remote-btn zero" data-num="0">0</button>
+        </div>
+    </div>
+    
+    <div class="status" id="status">جاهز</div>
+
+    <div class="controls">
+        <button id="playBtn" aria-label="تشغيل أو إيقاف مؤقت"><i class="fas fa-play"></i></button>
+        <button id="muteBtn" aria-label="كتم أو إلغاء كتم الصوت"><i class="fas fa-volume-up"></i></button>
+        <button id="prevBtn" aria-label="القناة السابقة"><i class="fas fa-backward"></i></button>
+        <button id="nextBtn" aria-label="القناة التالية"><i class="fas fa-forward"></i></button>
+        <button id="fullscreenBtn" aria-label="وضع ملء الشاشة"><i class="fas fa-expand"></i></button>
+        <button id="retryBtn" aria-label="إعادة محاولة تحميل القناة" style="display: none;"><i class="fas fa-redo"></i> إعادة المحاولة</button>
+        <select id="qualitySelect" aria-label="اختيار جودة الفيديو">
+            <option value="auto">Auto</option>
+        </select>
+        <button id="exportM3U" aria-label="حفظ قائمة M3U">حفظ M3U</button>
+        <button id="shuffleChannelsBtn" aria-label="ترتيب القنوات عشوائياً">ترتيب عشوائي</button>
+        <button id="favoriteBtn" aria-label="إضافة إلى المفضلة"><i class="fas fa-star"></i> إضافة إلى المفضلة</button>
+        <button id="showFavoritesBtn" aria-label="عرض المفضلة"><i class="fas fa-star"></i> عرض المفضلة</button>
+        <button id="remoteBtn" aria-label="عرض ريموت التلفاز"><i class="fas fa-keyboard"></i> ريموت</button>
+    </div>
+
+    <div class="controls">
+        <input type="file" id="fileInput" accept=".m3u" aria-label="تحميل ملف M3U">
+        <input type="text" id="linkInput" placeholder="ألصق رابط M3U أو M3U8 هنا..." value="https://iptv-org.github.io/iptv/index.m3u" aria-label="إدخال رابط M3U">
+        <button id="loadLink" aria-label="تحميل الرابط وإضافة القنوات">تحميل الرابط وإضافة</button>
+        <button id="clearChannels" aria-label="مسح القنوات المحفوظة">مسح القنوات المحفوظة</button>
+        <button id="loadTenBtn" aria-label="تحميل 10 قنوات عشوائية">تحميل 10 قنوات</button>
+    </div>
+
+    <div class="controls">
+        <button id="checkLinksBtn" aria-label="فحص روابط القنوات">فحص القنوات</button>
+        <button id="selectModeBtn" aria-label="تفعيل وضع تحديد القنوات">تحديد القنوات</button>
+        <button id="deleteSelectedBtn" aria-label="حذف القنوات المحددة">حذف القنوات المحددة</button>
+        <button id="checkAllLinksBtn" aria-label="فحص جميع الروابط">فحص جميع الروابط</button>
+        <button id="removeDeadLinksBtn" aria-label="إزالة الروابط غير الصالحة">إزالة الروابط غير الصالحة</button>
+    </div>
+
+    <div class="channel-box">
+        <input type="text" id="searchInput" placeholder="ابحث عن قناة..." aria-label="البحث في القنوات">
+        <div class="channel-list" id="channelList"></div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+<script>
+const video = document.getElementById("videoPlayer");
+const tv = document.getElementById("tv");
+const fileInput = document.getElementById("fileInput");
+const linkInput = document.getElementById("linkInput");
+const loadLinkBtn = document.getElementById("loadLink");
+const channelList = document.getElementById("channelList");
+const searchInput = document.getElementById("searchInput");
+const qualitySelect = document.getElementById("qualitySelect");
+const clearBtn = document.getElementById("clearChannels");
+const exportBtn = document.getElementById("exportM3U");
+const playBtn = document.getElementById("playBtn");
+const muteBtn = document.getElementById("muteBtn");
+const checkLinksBtn = document.getElementById("checkLinksBtn");
+const deleteSelectedBtn = document.getElementById("deleteSelectedBtn");
+const selectModeBtn = document.getElementById("selectModeBtn");
+const loadTenBtn = document.getElementById("loadTenBtn");
+const prevBtn = document.getElementById("prevBtn");
+const nextBtn = document.getElementById("nextBtn");
+const fullscreenBtn = document.getElementById("fullscreenBtn");
+const statusEl = document.getElementById("status");
+const fullscreenControls = document.getElementById("fullscreenControls");
+const fsPrevBtn = document.getElementById("fsPrevBtn");
+const fsNextBtn = document.getElementById("fsNextBtn");
+const fsQualitySelect = document.getElementById("fsQualitySelect");
+const exitFsBtn = document.getElementById("exitFsBtn");
+const fsFillBtn = document.getElementById("fsFillBtn");
+const fsPlayBtn = document.getElementById("fsPlayBtn");
+const fsMuteBtn = document.getElementById("fsMuteBtn");
+const fsVolumeUpBtn = document.getElementById("fsVolumeUpBtn");
+const fsVolumeDownBtn = document.getElementById("fsVolumeDownBtn");
+const fsSeekForwardBtn = document.getElementById("fsSeekForwardBtn");
+const fsSeekBackwardBtn = document.getElementById("fsSeekBackwardBtn");
+const fsRemoteBtn = document.getElementById("fsRemoteBtn");
+const remoteBtn = document.getElementById("remoteBtn");
+const remoteContainer = document.getElementById("remoteContainer");
+const remoteDisplay = document.getElementById("remoteDisplay");
+const mainSearchInput = document.getElementById("mainSearchInput");
+const mainSearchBtn = document.getElementById("mainSearchBtn");
+const shuffleChannelsBtn = document.getElementById("shuffleChannelsBtn");
+const favoriteBtn = document.getElementById("favoriteBtn");
+const showFavoritesBtn = document.getElementById("showFavoritesBtn");
+const checkAllLinksBtn = document.getElementById("checkAllLinksBtn");
+const removeDeadLinksBtn = document.getElementById("removeDeadLinksBtn");
+const checkModeSelect = document.getElementById("checkModeSelect");
+const videoLoading = document.getElementById("videoLoading");
+const retryBtn = document.getElementById("retryBtn");
+
+let hls;
+let allChannels = [];
+let favorites = [];
+let currentIndex = 0;
+let selectedChannels = new Set();
+let selectMode = false;
+let masterCache = [];
+let fsControlsTimeout;
+let remoteTimeout;
+let isShowingFavorites = false;
+let checkMode = checkModeSelect.value;
+let retryCount = 0;
+let channelNumberInput = '';
+let channelInputTimeout;
+const MAX_RETRIES = 3;
+const MAX_CHANNELS = 20000;
+
+if (typeof Hls === "undefined") {
+    statusEl.textContent = "فشل تحميل مكتبة HLS.js. تحقق من الاتصال بالإنترنت أو استخدم ملف محلي.";
+    statusEl.classList.add("error");
+}
+
+class VirtualList {
+    constructor(container, channels, renderCallback) {
+        this.container = container;
+        this.channels = channels;
+        this.renderCallback = renderCallback;
+        this.itemHeight = 50;
+        this.visibleItems = Math.ceil(container.clientHeight / this.itemHeight) + 5;
+        this.startIndex = 0;
+        this.container.innerHTML = '';
+        this.container.addEventListener('scroll', this.handleScroll.bind(this));
+        this.render();
+    }
+
+    handleScroll() {
+        const scrollTop = this.container.scrollTop;
+        const newStartIndex = Math.floor(scrollTop / this.itemHeight);
+        if (newStartIndex !== this.startIndex) {
+            this.startIndex = newStartIndex;
+            this.render();
+        }
+    }
+
+    updateChannels(channels) {
+        this.channels = channels;
+        this.startIndex = 0;
+        this.render();
+    }
+
+    render() {
+        this.container.innerHTML = '';
+        const endIndex = Math.min(this.startIndex + this.visibleItems, this.channels.length);
+        const fragment = document.createDocumentFragment();
+        for (let i = this.startIndex; i < endIndex; i++) {
+            const ch = this.channels[i];
+            const div = this.renderCallback(ch, i);
+            fragment.appendChild(div);
+        }
+        this.container.appendChild(fragment);
+        this.container.style.height = `${this.channels.length * this.itemHeight}px`;
+        this.container.scrollTop = this.startIndex * this.itemHeight;
+    }
+}
+
+let virtualList;
+
+function sanitize(str) {
+    const div = document.createElement("div");
+    div.textContent = str;
+    return div.innerHTML.replace(/[<>"'&]/g, m => ({
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;',
+        '&': '&amp;'
+    })[m]);
+}
+
+function parseM3UToArray(c) {
+    const l = c.split(/\r?\n/);
+    const o = [];
+    const s = new Set();
+    let n = "قناة غير معروفة";
+    let g = "غير مصنف";
+    for (const r of l) {
+        const t = r.trim();
+        if (!t) continue;
+        if (t.startsWith("#EXTINF")) {
+            const groupMatch = t.match(/group-title="([^"]*)"/);
+            const nameMatch = t.match(/,(.*)$/);
+            n = nameMatch ? sanitize(nameMatch[1].trim()) : "قناة غير معروفة";
+            g = groupMatch ? sanitize(groupMatch[1]) : "غير مصنف";
+        } else if (!t.startsWith("#")) {
+            const u = t;
+            if (!s.has(u) && o.length < MAX_CHANNELS) {
+                s.add(u);
+                o.push({name: n, url: u, group: g, isFavorite: false});
+            }
+            n = "قناة غير معروفة";
+            g = "غير مصنف";
+        }
+    }
+    return o;
+}
+
+function mergeChannels(s, i) {
+    const m = new Map();
+    for (const e of s) m.set(e.url, e);
+    for (const n of i) {
+        if (!m.has(n.url)) m.set(n.url, n);
+        else {
+            const existing = m.get(n.url);
+            existing.name = n.name || existing.name;
+            existing.group = n.group || existing.group;
+        }
+    }
+    const result = Array.from(m.values());
+    return result.slice(0, MAX_CHANNELS);
+}
+
+function shuffle(a) {
+    const t = a.slice();
+    for (let i = t.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [t[i], t[j]] = [t[j], t[i]];
+    }
+    return t;
+}
+
+async function isUrlReachable(u) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    try {
+        const res = await fetch(u, { method: "GET", signal: controller.signal, cache: "no-cache" });
+        clearTimeout(timeoutId);
+        const contentType = res.headers.get("content-type") || "";
+        return res.ok && (contentType.includes("application/vnd.apple.mpegurl") || contentType.includes("audio/mpegurl") || contentType.includes("video"));
+    } catch {
+        clearTimeout(timeoutId);
+        return false;
+    }
+}
+
+async function checkAndFilterChannels(channels) {
+    const validChannels = [];
+    const total = Math.min(channels.length, MAX_CHANNELS);
+    let checked = 0;
+    for (const ch of channels) {
+        const ok = await isUrlReachable(ch.url);
+        if (ok) validChannels.push(ch);
+        checked++;
+        statusEl.textContent = `جاري فحص القنوات (${Math.round((checked / total) * 100)}%)...`;
+        if (validChannels.length >= MAX_CHANNELS) break;
+    }
+    return validChannels;
+}
+
+function renderChannel(ch, i) {
+    const div = document.createElement("div");
+    div.className = "channel";
+    if (selectedChannels.has(ch.url)) div.classList.add("selected");
+    const num = document.createElement("div");
+    num.className = "channel-number";
+    num.textContent = i + 1;
+    const name = document.createElement("div");
+    name.className = "channel-name";
+    name.textContent = ch.name;
+    if (ch.isFavorite) {
+        const star = document.createElement("i");
+        star.className = "fas fa-star badge";
+        name.appendChild(star);
+    }
+    const group = document.createElement("span");
+    group.className = "channel-group";
+    group.textContent = `(${ch.group})`;
+    name.appendChild(group);
+    const moveInput = document.createElement("input");
+    moveInput.type = "number";
+    moveInput.className = "channel-move";
+    moveInput.min = 1;
+    moveInput.max = (isShowingFavorites ? favorites : allChannels).length;
+    moveInput.value = i + 1;
+    moveInput.setAttribute("aria-label", `تغيير ترتيب القناة ${ch.name}`);
+    moveInput.addEventListener("change", () => {
+        const newIndex = parseInt(moveInput.value) - 1;
+        const targetArray = isShowingFavorites ? favorites : allChannels;
+        if (newIndex >= 0 && newIndex < targetArray.length && newIndex !== i) {
+            targetArray.splice(i, 1);
+            targetArray.splice(newIndex, 0, ch);
+            if (isShowingFavorites) {
+                localStorage.setItem("favorites", JSON.stringify(favorites));
+            } else {
+                localStorage.setItem("m3uChannels", JSON.stringify(allChannels));
+            }
+            virtualList.updateChannels(targetArray);
+        } else {
+            moveInput.value = i + 1;
+        }
+    });
+    div.appendChild(num);
+    div.appendChild(name);
+    div.appendChild(moveInput);
+    div.addEventListener("click", () => {
+        if (selectMode) {
+            if (selectedChannels.has(ch.url)) {
+                selectedChannels.delete(ch.url);
+                div.classList.remove("selected");
+            } else {
+                selectedChannels.add(ch.url);
+                div.classList.add("selected");
+            }
+        } else {
+            playChannelByUrl(ch.url);
+        }
+    });
+    div.setAttribute("tabindex", "0");
+    div.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") div.click();
+    });
+    return div;
+}
+
+function renderChannels(channels) {
+    virtualList = new VirtualList(channelList, channels, renderChannel);
+}
+
+function playChannelByUrl(url) {
+    const targetArray = isShowingFavorites ? favorites : allChannels;
+    const index = targetArray.findIndex(ch => ch.url === url);
+    if (index !== -1) {
+        playChannel(index);
+    }
+}
+
+function playChannel(i) {
+    const targetArray = isShowingFavorites ? favorites : allChannels;
+    if (i < 0 || i >= targetArray.length) {
+        statusEl.textContent = "لا توجد قنوات للعرض.";
+        statusEl.classList.add("warning");
+        return;
+    }
+    currentIndex = i;
+    const ch = targetArray[i];
+    statusEl.textContent = "جاري تشغيل: " + (ch.name || ch.url);
+    statusEl.classList.remove("error", "success", "warning", "loading");
+    videoLoading.style.display = "block";
+    retryCount = 0;
+    loadChannel(ch);
+}
+
+function loadChannel(ch) {
+    if (hls) {
+        try {
+            hls.destroy();
+        } catch (e) {}
+        hls = null;
+    }
+    if (Hls.isSupported()) {
+        hls = new Hls({
+            maxBufferLength: 30,
+            maxMaxBufferLength: 60,
+            maxBufferSize: 60 * 1000 * 1000,
+            lowLatencyMode: true,
+            autoStartLoad: true
+        });
+        hls.loadSource(ch.url);
+        hls.attachMedia(video);
+        hls.on(Hls.Events.MANIFEST_PARSED, function() {
+            qualitySelect.innerHTML = "";
+            fsQualitySelect.innerHTML = "";
+            const autoOption = document.createElement("option");
+            autoOption.value = "auto";
+            autoOption.text = "Auto";
+            qualitySelect.appendChild(autoOption);
+            fsQualitySelect.appendChild(autoOption.cloneNode(true));
+            hls.levels.forEach((level, i) => {
+                const o = document.createElement("option");
+                o.value = i;
+                o.text = level.height ? level.height + "p" : level.bitrate ? `${Math.round(level.bitrate/1000)}kbps` : "Unknown";
+                qualitySelect.appendChild(o);
+                fsQualitySelect.appendChild(o.cloneNode(true));
+            });
+            statusEl.textContent = "تم التشغيل بنجاح: " + ch.name;
+            statusEl.classList.add("success");
+            videoLoading.style.display = "none";
+            retryBtn.style.display = "none";
+        });
+        hls.on(Hls.Events.ERROR, function(event, data) {
+            console.error("HLS Error Details:", {
+                type: data.type,
+                details: data.details,
+                fatal: data.fatal,
+                error: data.error
+            });
+            statusEl.textContent = `خطأ في التشغيل: ${data.details} (${data.type}). اضغط "إعادة المحاولة" أو جرب قناة أخرى.`;
+            statusEl.classList.add("error");
+            videoLoading.style.display = "none";
+            retryBtn.style.display = "inline-block";
+        });
+    } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
+        video.src = ch.url;
+    } else {
+        video.src = ch.url;
+    }
+    video.play().catch((err) => {
+        statusEl.textContent = `خطأ في التشغيل: ${err.message}. اضغط "إعادة المحاولة" أو جرب قناة أخرى.`;
+        statusEl.classList.add("error");
+        videoLoading.style.display = "none";
+        retryBtn.style.display = "inline-block";
+    });
+    updatePlayButtonIcon();
+    localStorage.setItem("m3uChannels", JSON.stringify(allChannels.slice(0, MAX_CHANNELS)));
+    localStorage.setItem("favorites", JSON.stringify(favorites));
+}
+
+function updatePlayButtonIcon() {
+    const icon = video.paused ? '<i class="fas fa-play"></i>' : '<i class="fas fa-pause"></i>';
+    playBtn.innerHTML = icon;
+    fsPlayBtn.innerHTML = icon;
+    playBtn.setAttribute("aria-label", video.paused ? "تشغيل" : "إيقاف مؤقت");
+    fsPlayBtn.setAttribute("aria-label", video.paused ? "تشغيل" : "إيقاف مؤقت");
+}
+
+qualitySelect.addEventListener("change", function() {
+    if (!hls) return;
+    hls.currentLevel = this.value === "auto" ? -1 : parseInt(this.value);
+    fsQualitySelect.value = this.value;
+});
+
+fsQualitySelect.addEventListener("change", function() {
+    qualitySelect.value = this.value;
+    qualitySelect.dispatchEvent(new Event('change'));
+});
+
+function debounce(fn, ms) {
+    let timeout;
+    return (...args) => {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => fn(...args), ms);
+    };
+}
+
+searchInput.addEventListener("input", debounce(() => {
+    const q = searchInput.value.trim().toLowerCase();
+    const targetArray = isShowingFavorites ? favorites : allChannels;
+    if (!q) {
+        virtualList.updateChannels(targetArray);
+        statusEl.textContent = "تم إعادة عرض جميع القنوات.";
+        statusEl.classList.add("success");
+    } else {
+        const keywords = q.split(/\s+/);
+        const filtered = targetArray.filter(ch =>
+            keywords.every(k =>
+                ch.name.toLowerCase().includes(k) ||
+                ch.url.toLowerCase().includes(k) ||
+                ch.group.toLowerCase().includes(k)
+            )
+        );
+        virtualList.updateChannels(filtered);
+        statusEl.textContent = filtered.length > 0 ? `تم العثور على ${filtered.length} قناة` : "لم يتم العثور على قنوات مطابقة.";
+        statusEl.classList.add(filtered.length > 0 ? "success" : "warning");
+    }
+}, 300));
+
+checkModeSelect.addEventListener("change", () => {
+    checkMode = checkModeSelect.value;
+    statusEl.textContent = `وضع التحميل: ${checkMode === "check" ? "فحص الروابط" : "بدون فحص"}`;
+    statusEl.classList.add("success");
+});
+
+fileInput.addEventListener("change", async e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    statusEl.textContent = "جاري تحميل الملف من الجهاز...";
+    statusEl.classList.add("loading");
+    reader.onload = async e2 => {
+        try {
+            const incoming = parseM3UToArray(e2.target.result);
+            let validChannels = incoming;
+            if (checkMode === "check") {
+                statusEl.textContent = "جاري فحص القنوات من الملف...";
+                validChannels = await checkAndFilterChannels(incoming);
+            } else {
+                statusEl.textContent = "جاري إضافة القنوات بدون فحص...";
+            }
+            let stored = JSON.parse(localStorage.getItem("m3uChannels") || "[]");
+            const combined = mergeChannels(stored, validChannels);
+            allChannels = combined;
+            localStorage.setItem("m3uChannels", JSON.stringify(allChannels));
+            virtualList.updateChannels(isShowingFavorites ? favorites : allChannels);
+            if (allChannels.length > 0 && !isShowingFavorites) playChannel(0);
+            statusEl.textContent = `تمت إضافة ${validChannels.length} قناة ${checkMode === "check" ? "صالحة" : ""} من الملف. المحفوظ الآن: ${allChannels.length}`;
+            statusEl.classList.add("success");
+        } catch (err) {
+            statusEl.textContent = "فشل تحميل الملف: " + err.message;
+            statusEl.classList.add("error");
+        } finally {
+            statusEl.classList.remove("loading");
+            fileInput.value = "";
+        }
+    };
+    reader.readAsText(file);
+});
+
+loadLinkBtn.addEventListener("click", async () => {
+    const url = linkInput.value.trim();
+    if (!url) {
+        statusEl.textContent = "يرجى إدخال رابط صالح.";
+        statusEl.classList.add("warning");
+        return;
+    }
+    try {
+        statusEl.textContent = "جاري تحميل الرابط...";
+        statusEl.classList.add("loading");
+        const res = await fetch(url);
+        if (!res.ok) throw new Error("فشل التحميل");
+        const contentType = res.headers.get("content-type") || "";
+        const text = await res.text();
+        let incoming;
+        let isSingleChannel = /\.(m3u8|ts)(\?|$)/i.test(url) || contentType.includes("video") || contentType.includes("application/x-mpegURL") || !text.includes("#EXTM3U") || text.split(/\r?\n/).filter(line => line.trim() && !line.startsWith("#")).length === 1;
+
+        if (isSingleChannel) {
+            const channelName = prompt("أدخل اسم القناة:", "قناة جديدة");
+            if (!channelName) {
+                statusEl.textContent = "تم إلغاء الإضافة.";
+                statusEl.classList.add("warning");
+                statusEl.classList.remove("loading");
+                return;
+            }
+            incoming = [{ name: sanitize(channelName), url: url, group: "غير مصنف", isFavorite: false }];
+        } else {
+            incoming = parseM3UToArray(text);
+        }
+
+        let validChannels = incoming;
+        if (checkMode === "check") {
+            statusEl.textContent = isSingleChannel ? "جاري فحص الرابط الفردي..." : "جاري فحص القنوات من الرابط...";
+            validChannels = await checkAndFilterChannels(incoming);
+            if (validChannels.length === 0) {
+                statusEl.textContent = isSingleChannel ? "الرابط الفردي غير صالح." : "لم يتم العثور على قنوات صالحة.";
+                statusEl.classList.add("error");
+                statusEl.classList.remove("loading");
+                return;
+            }
+        } else {
+            statusEl.textContent = isSingleChannel ? "جاري إضافة الرابط الفردي بدون فحص..." : "جاري إضافة القنوات بدون فحص...";
+        }
+        let stored = JSON.parse(localStorage.getItem("m3uChannels") || "[]");
+        const combined = mergeChannels(stored, validChannels);
+        allChannels = combined;
+        localStorage.setItem("m3uChannels", JSON.stringify(allChannels));
+        virtualList.updateChannels(isShowingFavorites ? favorites : allChannels);
+        if (allChannels.length > 0 && !isShowingFavorites) playChannel(0);
+        statusEl.textContent = `تمت إضافة ${validChannels.length} قناة ${checkMode === "check" ? "صالحة" : ""} من الرابط. المحفوظ الآن: ${allChannels.length}`;
+        statusEl.classList.add("success");
+    } catch (err) {
+        statusEl.textContent = "فشل تحميل الرابط: " + err.message;
+        statusEl.classList.add("error");
+    } finally {
+        statusEl.classList.remove("loading");
+        linkInput.value = "";
+    }
+});
+
+function clearChannels() {
+    allChannels = [];
+    favorites = [];
+    selectedChannels.clear();
+    isShowingFavorites = false;
+    virtualList.updateChannels(allChannels);
+    localStorage.removeItem("m3uChannels");
+    localStorage.removeItem("favorites");
+    statusEl.textContent = "تم مسح القنوات والمفضلة.";
+    statusEl.classList.add("success");
+}
+
+clearBtn.addEventListener("click", clearChannels);
+
+exportBtn.addEventListener("click", () => {
+    let m3u = "#EXTM3U\n";
+    const targetArray = isShowingFavorites ? favorites : allChannels;
+    targetArray.forEach(ch => {
+        m3u += `#EXTINF:-1 group-title="${ch.group}",${ch.name}\n${ch.url}\n`;
+    });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([m3u], {type: "audio/x-mpegurl"}));
+    a.download = isShowingFavorites ? "favorites.m3u" : "channels.m3u";
+    a.click();
+    statusEl.textContent = `تم تصدير ${isShowingFavorites ? 'المفضلة' : 'القنوات'} كملف M3U`;
+    statusEl.classList.add("success");
+});
+
+playBtn.addEventListener("click", () => {
+    if (video.paused) video.play();
+    else video.pause();
+    updatePlayButtonIcon();
+});
+
+fsPlayBtn.addEventListener("click", () => {
+    playBtn.click();
+});
+
+video.addEventListener("play", () => {
+    updatePlayButtonIcon();
+    videoLoading.style.display = "none";
+});
+
+video.addEventListener("pause", updatePlayButtonIcon);
+
+muteBtn.addEventListener("click", () => {
+    video.muted = !video.muted;
+    muteBtn.innerHTML = video.muted ? '<i class="fas fa-volume-mute"></i>' : '<i class="fas fa-volume-up"></i>';
+    fsMuteBtn.innerHTML = video.muted ? '<i class="fas fa-volume-mute"></i>' : '<i class="fas fa-volume-up"></i>';
+    muteBtn.setAttribute("aria-label", video.muted ? "إلغاء كتم الصوت" : "كتم الصوت");
+    fsMuteBtn.setAttribute("aria-label", video.muted ? "إلغاء كتم الصوت" : "كتم الصوت");
+});
+
+fsMuteBtn.addEventListener("click", () => {
+    muteBtn.click();
+});
+
+fsVolumeUpBtn.addEventListener("click", () => {
+    video.volume = Math.min(video.volume + 0.1, 1);
+    statusEl.textContent = `مستوى الصوت: ${Math.round(video.volume * 100)}%`;
+    statusEl.classList.add("success");
+    if (video.muted) muteBtn.click();
+});
+
+fsVolumeDownBtn.addEventListener("click", () => {
+    video.volume = Math.max(video.volume - 0.1, 0);
+    statusEl.textContent = `مستوى الصوت: ${Math.round(video.volume * 100)}%`;
+    statusEl.classList.add("success");
+    if (video.muted) muteBtn.click();
+});
+
+fsSeekForwardBtn.addEventListener("click", () => {
+    video.currentTime += 10;
+    statusEl.textContent = "تم التقديم 10 ثوان";
+    statusEl.classList.add("success");
+});
+
+fsSeekBackwardBtn.addEventListener("click", () => {
+    video.currentTime -= 10;
+    statusEl.textContent = "تم الترجيع 10 ثوان";
+    statusEl.classList.add("success");
+});
+
+checkLinksBtn.addEventListener("click", async() => {
+    statusEl.textContent = "جاري فحص القنوات (0%)...";
+    statusEl.classList.add("loading");
+    statusEl.classList.remove("error", "success", "warning");
+    const targetArray = isShowingFavorites ? favorites : allChannels;
+    const total = targetArray.length;
+    let checked = 0;
+    for (let i = 0; i < total; i++) {
+        const ch = targetArray[i];
+        const ok = await isUrlReachable(ch.url);
+        if (virtualList.startIndex <= i && i < virtualList.startIndex + virtualList.visibleItems) {
+            const div = channelList.children[i - virtualList.startIndex];
+            const nameDiv = div ? div.querySelector(".channel-name") : null;
+            if (nameDiv) nameDiv.style.color = ok ? "white" : "red";
+        }
+        checked++;
+        statusEl.textContent = `جاري فحص القنوات (${Math.round((checked / total) * 100)}%)...`;
+    }
+    statusEl.textContent = "انتهى فحص القنوات.";
+    statusEl.classList.add("success");
+    statusEl.classList.remove("loading");
+});
+
+checkAllLinksBtn.addEventListener("click", async() => {
+    statusEl.textContent = "جاري فحص جميع الروابط (0%)...";
+    statusEl.classList.add("loading");
+    statusEl.classList.remove("error", "success", "warning");
+    try {
+        const masterUrl = "https://iptv-org.github.io/iptv/index.m3u";
+        const res = await fetch(masterUrl);
+        if (!res.ok) throw new Error("فشل التحميل");
+        const text = await res.text();
+        if (masterCache.length === 0) {
+            masterCache = parseM3UToArray(text).filter(ch => /\.m3u8?(\?|$)/i.test(ch.url)).slice(0, 1000);
+        }
+        const total = masterCache.length;
+        let checked = 0;
+        const validChannels = [];
+        for (const ch of masterCache) {
+            const ok = await isUrlReachable(ch.url);
+            if (ok) validChannels.push(ch);
+            checked++;
+            statusEl.textContent = `جاري فحص الروابط (${Math.round((checked / total) * 100)}%)...`;
+        }
+        masterCache = validChannels;
+        statusEl.textContent = `تم فحص الروابط. تم العثور على ${validChannels.length} رابط صالح.`;
+        statusEl.classList.add("success");
+    } catch (err) {
+        statusEl.textContent = "فشل فحص الروابط: " + err.message;
+        statusEl.classList.add("error");
+    } finally {
+        statusEl.classList.remove("loading");
+    }
+});
+
+removeDeadLinksBtn.addEventListener("click", async() => {
+    statusEl.textContent = "جاري إزالة الروابط غير الصالحة (0%)...";
+    statusEl.classList.add("loading");
+    statusEl.classList.remove("error", "success", "warning");
+    const targetArray = isShowingFavorites ? favorites : allChannels;
+    const total = targetArray.length;
+    let checked = 0;
+    const validChannels = [];
+    for (const ch of targetArray) {
+        const ok = await isUrlReachable(ch.url);
+        if (ok) validChannels.push(ch);
+        checked++;
+        statusEl.textContent = `جاري إزالة الروابط غير الصالحة (${Math.round((checked / total) * 100)}%)...`;
+    }
+    if (isShowingFavorites) {
+        favorites = validChannels;
+        localStorage.setItem("favorites", JSON.stringify(favorites));
+    } else {
+        allChannels = validChannels;
+        localStorage.setItem("m3uChannels", JSON.stringify(allChannels));
+    }
+    virtualList.updateChannels(isShowingFavorites ? favorites : allChannels);
+    statusEl.textContent = `تمت إزالة الروابط غير الصالحة. المحفوظ الآن: ${validChannels.length}`;
+    statusEl.classList.add("success");
+    statusEl.classList.remove("loading");
+});
+
+deleteSelectedBtn.addEventListener("click", () => {
+    if (selectedChannels.size === 0) {
+        statusEl.textContent = "لم يتم تحديد أي قنوات لحذفها.";
+        statusEl.classList.add("warning");
+        return;
+    }
+    const targetArray = isShowingFavorites ? favorites : allChannels;
+    const newArray = targetArray.filter(ch => !selectedChannels.has(ch.url));
+    if (isShowingFavorites) {
+        favorites = newArray;
+        localStorage.setItem("favorites", JSON.stringify(favorites));
+    } else {
+        allChannels = newArray;
+        localStorage.setItem("m3uChannels", JSON.stringify(allChannels));
+    }
+    selectedChannels.clear();
+    virtualList.updateChannels(isShowingFavorites ? favorites : allChannels);
+    statusEl.textContent = `تم حذف القنوات المحددة. المحفوظ الآن: ${newArray.length}`;
+    statusEl.classList.add("success");
+});
+
+selectModeBtn.addEventListener("click", () => {
+    selectMode = !selectMode;
+    selectModeBtn.style.background = selectMode ? "#4caf50" : "#03a9f4";
+    selectModeBtn.setAttribute("aria-label", selectMode ? "إلغاء وضع تحديد القنوات" : "تفعيل وضع تحديد القنوات");
+    if (!selectMode) selectedChannels.clear();
+    virtualList.updateChannels(isShowingFavorites ? favorites : allChannels);
+});
+
+prevBtn.addEventListener("click", () => {
+    const targetArray = isShowingFavorites ? favorites : allChannels;
+    if (targetArray.length === 0) {
+        statusEl.textContent = "لا توجد قنوات للعرض.";
+        statusEl.classList.add("warning");
+        return;
+    }
+    const idx = (currentIndex - 1 + targetArray.length) % targetArray.length;
+    playChannel(idx);
+});
+
+fsPrevBtn.addEventListener("click", () => prevBtn.click());
+
+nextBtn.addEventListener("click", () => {
+    const targetArray = isShowingFavorites ? favorites : allChannels;
+    if (targetArray.length === 0) {
+        statusEl.textContent = "لا توجد قنوات للعرض.";
+        statusEl.classList.add("warning");
+        return;
+    }
+    const idx = (currentIndex + 1) % targetArray.length;
+    playChannel(idx);
+});
+
+fsNextBtn.addEventListener("click", () => nextBtn.click());
+
+fullscreenBtn.addEventListener("click", () => {
+    if (!document.fullscreenElement) {
+        tv.requestFullscreen().catch(err => {
+            statusEl.textContent = `خطأ في تفعيل ملء الشاشة: ${err.message}`;
+            statusEl.classList.add("error");
+        });
+        tv.classList.add("fullscreen");
+        showFsControls();
+    } else {
+        document.exitFullscreen();
+        tv.classList.remove("fullscreen");
+        fullscreenControls.classList.remove("show");
+    }
+});
+
+exitFsBtn.addEventListener("click", () => {
+    document.exitFullscreen();
+    tv.classList.remove("fullscreen");
+    fullscreenControls.classList.remove("show");
+});
+
+fsFillBtn.addEventListener("click", () => {
+    video.style.objectFit = video.style.objectFit === "fill" ? "contain" : "fill";
+    fsFillBtn.setAttribute("aria-label", video.style.objectFit === "fill" ? "وضع الاحتواء" : "وضع الملء");
+});
+
+function showFsControls() {
+    fullscreenControls.classList.add("show");
+    if (fsControlsTimeout) clearTimeout(fsControlsTimeout);
+    fsControlsTimeout = setTimeout(() => {
+        fullscreenControls.classList.remove("show");
+    }, 5000);
+}
+
+video.addEventListener("click", () => {
+    if (document.fullscreenElement) {
+        showFsControls();
+    }
+});
+
+video.addEventListener("dblclick", () => {
+    fullscreenBtn.click();
+});
+
+function showRemote() {
+    remoteContainer.classList.add("show");
+    channelNumberInput = '';
+    remoteDisplay.textContent = '---';
+    if (remoteTimeout) clearTimeout(remoteTimeout);
+    remoteTimeout = setTimeout(() => {
+        remoteContainer.classList.remove("show");
+    }, 8000);
+}
+
+fsRemoteBtn.addEventListener("click", showRemote);
+remoteBtn.addEventListener("click", showRemote);
+
+remoteContainer.addEventListener("click", (e) => {
+    if (e.target.classList.contains("remote-btn")) {
+        const num = e.target.dataset.num;
+        channelNumberInput += num;
+        remoteDisplay.textContent = channelNumberInput || '---';
+        if (channelInputTimeout) clearTimeout(channelInputTimeout);
+        channelInputTimeout = setTimeout(() => {
+            const channelNum = parseInt(channelNumberInput) - 1;
+            const targetArray = isShowingFavorites ? favorites : allChannels;
+            if (channelNum >= 0 && channelNum < targetArray.length) {
+                playChannel(channelNum);
+                remoteContainer.classList.remove("show");
+                channelNumberInput = '';
+                remoteDisplay.textContent = '---';
+            } else {
+                statusEl.textContent = "رقم قناة غير صالح.";
+                statusEl.classList.add("error");
+                channelNumberInput = '';
+                remoteDisplay.textContent = '---';
+            }
+        }, 5000);
+    }
+});
+
+window.addEventListener("orientationchange", () => {
+    if (document.fullscreenElement) {
+        showFsControls();
+        showRemote();
+    }
+});
+
+async function loadTenFromIptvOrg() {
+    try {
+        statusEl.textContent = "جاري تحميل القوائم من iptv-org...";
+        statusEl.classList.add("loading");
+        const masterUrl = "https://iptv-org.github.io/iptv/index.m3u";
+        const res = await fetch(masterUrl);
+        if (!res.ok) throw new Error("فشل التحميل");
+        const text = await res.text();
+        if (masterCache.length === 0) {
+            masterCache = parseM3UToArray(text).filter(ch => /\.m3u8?(\?|$)/i.test(ch.url)).slice(0, 1000);
+        }
+        const shuffled = shuffle(masterCache);
+        let stored = JSON.parse(localStorage.getItem("m3uChannels") || "[]");
+        const storedUrls = new Set(stored.map(ch => ch.url));
+        const newOnes = [];
+        const total = Math.min(shuffled.length, 100);
+        let checked = 0;
+        for (const ch of shuffled) {
+            if (newOnes.length >= 10) break;
+            if (storedUrls.has(ch.url)) continue;
+            if (checkMode === "check") {
+                const ok = await isUrlReachable(ch.url);
+                if (ok) {
+                    newOnes.push(ch);
+                    storedUrls.add(ch.url);
+                }
+            } else {
+                newOnes.push(ch);
+                storedUrls.add(ch.url);
+            }
+            checked++;
+            if (checkMode === "check") {
+                statusEl.textContent = `جاري فحص القنوات (${Math.round((checked / total) * 100)}%)...`;
+            }
+        }
+        allChannels = mergeChannels(stored, newOnes);
+        localStorage.setItem("m3uChannels", JSON.stringify(allChannels));
+        virtualList.updateChannels(isShowingFavorites ? favorites : allChannels);
+        statusEl.textContent = `المحفوظ الآن: ${allChannels.length} (تمت الإضافة: ${newOnes.length})`;
+        statusEl.classList.add("success");
+        if (allChannels.length > 0 && !isShowingFavorites) playChannel(0);
+    } catch (err) {
+        statusEl.textContent = "تعذر تحميل القنوات الجديدة: " + err.message;
+        statusEl.classList.add("error");
+    } finally {
+        statusEl.classList.remove("loading");
+    }
+}
+
+loadTenBtn.addEventListener("click", loadTenFromIptvOrg);
+
+mainSearchBtn.addEventListener("click", async () => {
+    const searchQuery = mainSearchInput.value.trim().toLowerCase();
+    if (!searchQuery) {
+        statusEl.textContent = "يرجى إدخال كلمة بحث صالحة.";
+        statusEl.classList.add("warning");
+        return;
+    }
+    statusEl.textContent = "جاري البحث الذكي عن قنوات...";
+    statusEl.classList.add("loading");
+    statusEl.classList.remove("error", "success", "warning");
+    try {
+        const masterUrl = "https://iptv-org.github.io/iptv/index.m3u";
+        const res = await fetch(masterUrl);
+        if (!res.ok) throw new Error("فشل تحميل قائمة القنوات");
+        const text = await res.text();
+        if (masterCache.length === 0) {
+            masterCache = parseM3UToArray(text).filter(ch => /\.m3u8?(\?|$)/i.test(ch.url)).slice(0, 1000);
+        }
+        const keywords = searchQuery.split(/\s+/);
+        const localMatches = masterCache.filter(ch => 
+            keywords.every(k =>
+                ch.name.toLowerCase().includes(k) || 
+                ch.group.toLowerCase().includes(k)
+            )
+        );
+        let apiMatches = [];
+        try {
+            const apiResponse = await fetch(`https://api.tvmaze.com/search/shows?q=${encodeURIComponent(searchQuery)}`);
+            if (apiResponse.ok) {
+                const shows = await apiResponse.json();
+                apiMatches = masterCache.filter(ch => 
+                    shows.some(show => ch.name.toLowerCase().includes(show.show.name.toLowerCase()))
+                );
+            }
+        } catch (apiError) {
+            console.warn("فشل البحث عبر TVmaze API:", apiError);
+        }
+        const foundChannels = [...new Set([...localMatches, ...apiMatches])];
+        if (foundChannels.length === 0) {
+            statusEl.textContent = `لم يتم العثور على قنوات مطابقة لـ "${searchQuery}"`;
+            statusEl.classList.add("error");
+            statusEl.classList.remove("loading");
+            return;
+        }
+        let validChannels = foundChannels;
+        if (checkMode === "check") {
+            statusEl.textContent = `جاري فحص ${foundChannels.length} قناة مطابقة...`;
+            validChannels = await checkAndFilterChannels(foundChannels);
+        } else {
+            statusEl.textContent = `جاري إضافة ${foundChannels.length} قناة بدون فحص...`;
+        }
+        let stored = JSON.parse(localStorage.getItem("m3uChannels") || "[]");
+        const storedUrls = new Set(stored.map(ch => ch.url));
+        const newOnes = validChannels.filter(ch => !storedUrls.has(ch.url)).slice(0, 10);
+        allChannels = mergeChannels(stored, newOnes);
+        localStorage.setItem("m3uChannels", JSON.stringify(allChannels));
+        virtualList.updateChannels(isShowingFavorites ? favorites : allChannels);
+        if (newOnes.length > 0) {
+            statusEl.textContent = `تم إضافة ${newOnes.length} قناة ${checkMode === "check" ? "صالحة" : ""} مطابقة لـ "${searchQuery}". المحفوظ الآن: ${allChannels.length}`;
+            statusEl.classList.add("success");
+            if (!isShowingFavorites) playChannel(0);
+        } else {
+            statusEl.textContent = `لم يتم العثور على قنوات ${checkMode === "check" ? "صالحة" : ""} جديدة مطابقة لـ "${searchQuery}"`;
+            statusEl.classList.add("warning");
+        }
+    } catch (err) {
+        statusEl.textContent = "فشل في البحث عن القنوات: " + err.message;
+        statusEl.classList.add("error");
+    } finally {
+        statusEl.classList.remove("loading");
+        mainSearchInput.value = "";
+    }
+});
+
+shuffleChannelsBtn.addEventListener("click", () => {
+    const targetArray = isShowingFavorites ? favorites : allChannels;
+    const shuffled = shuffle(targetArray);
+    if (isShowingFavorites) {
+        favorites = shuffled;
+        localStorage.setItem("favorites", JSON.stringify(favorites));
+    } else {
+        allChannels = shuffled;
+        localStorage.setItem("m3uChannels", JSON.stringify(allChannels));
+    }
+    virtualList.updateChannels(targetArray);
+    statusEl.textContent = `تم ترتيب ${isShowingFavorites ? 'المفضلة' : 'القنوات'} عشوائياً`;
+    statusEl.classList.add("success");
+});
+
+favoriteBtn.addEventListener("click", () => {
+    if (allChannels.length === 0 || currentIndex >= allChannels.length) {
+        statusEl.textContent = "لا توجد قناة لإضافتها إلى المفضلة";
+        statusEl.classList.add("warning");
+        return;
+    }
+    const ch = allChannels[currentIndex];
+    if (!ch.isFavorite) {
+        ch.isFavorite = true;
+        if (!favorites.some(fav => fav.url === ch.url)) {
+            favorites.push(ch);
+            localStorage.setItem("favorites", JSON.stringify(favorites));
+            statusEl.textContent = `تم إضافة "${ch.name}" إلى المفضلة`;
+            statusEl.classList.add("success");
+        } else {
+            statusEl.textContent = `"${ch.name}" موجودة بالفعل في المفضلة`;
+            statusEl.classList.add("warning");
+        }
+    } else {
+        ch.isFavorite = false;
+        favorites = favorites.filter(fav => fav.url !== ch.url);
+        localStorage.setItem("favorites", JSON.stringify(favorites));
+        statusEl.textContent = `تم إزالة "${ch.name}" من المفضلة`;
+        statusEl.classList.add("success");
+    }
+    virtualList.updateChannels(isShowingFavorites ? favorites : allChannels);
+});
+
+showFavoritesBtn.addEventListener("click", () => {
+    isShowingFavorites = !isShowingFavorites;
+    showFavoritesBtn.style.background = isShowingFavorites ? "#4caf50" : "#ffca28";
+    showFavoritesBtn.setAttribute("aria-label", isShowingFavorites ? "عرض جميع القنوات" : "عرض المفضلة");
+    virtualList.updateChannels(isShowingFavorites ? favorites : allChannels);
+    statusEl.textContent = isShowingFavorites ? `عرض المفضلة: ${favorites.length} قناة` : `عرض جميع القنوات: ${allChannels.length} قناة`;
+    statusEl.classList.add("success");
+});
+
+retryBtn.addEventListener("click", () => {
+    const targetArray = isShowingFavorites ? favorites : allChannels;
+    if (targetArray.length === 0 || currentIndex >= targetArray.length) {
+        statusEl.textContent = "لا توجد قنوات لإعادة المحاولة.";
+        statusEl.classList.add("warning");
+        return;
+    }
+    retryCount = 0;
+    statusEl.textContent = "جاري إعادة تحميل القناة...";
+    statusEl.classList.add("loading");
+    statusEl.classList.remove("error", "success", "warning");
+    retryBtn.style.display = "none";
+    playChannel(currentIndex);
+});
+
+window.addEventListener("load", async () => {
+    try {
+        const stored = JSON.parse(localStorage.getItem("m3uChannels") || "[]");
+        const storedFavorites = JSON.parse(localStorage.getItem("favorites") || "[]");
+        allChannels = Array.isArray(stored) ? stored.slice(0, MAX_CHANNELS) : [];
+        favorites = Array.isArray(storedFavorites) ? storedFavorites : [];
+        allChannels.forEach(ch => {
+            ch.isFavorite = favorites.some(fav => fav.url === ch.url);
+        });
+        virtualList = new VirtualList(channelList, allChannels, renderChannel);
+        if (allChannels.length > 0) {
+            playChannel(0);
+            statusEl.textContent = `جاهز. المحفوظ الآن: ${allChannels.length} (المفضلة: ${favorites.length})`;
+        } else {
+            statusEl.textContent = "جاهز";
+        }
+        statusEl.textContent += ` | وضع التحميل: فحص الروابط`;
+        statusEl.classList.add("success");
+    } catch (err) {
+        statusEl.textContent = "فشل تحميل القنوات المحفوظة: " + err.message;
+        statusEl.classList.add("error");
+        allChannels = [];
+        favorites = [];
+        virtualList = new VirtualList(channelList, allChannels, renderChannel);
+    }
+});
+
+document.addEventListener("keydown", (e) => {
+    if (e.target.tagName === "INPUT" || e.target.tagName === "SELECT") return;
+    if (e.key === "ArrowRight") nextBtn.click();
+    if (e.key === "ArrowLeft") prevBtn.click();
+    if (e.key === " ") playBtn.click();
+    if (e.key === "m") muteBtn.click();
+    if (e.key === "f") fullscreenBtn.click();
+    if (e.key === "+") fsVolumeUpBtn.click();
+    if (e.key === "-") fsVolumeDownBtn.click();
+    if (e.key === "ArrowUp") fsSeekForwardBtn.click();
+    if (e.key === "ArrowDown") fsSeekBackwardBtn.click();
+});
+
+video.addEventListener("loadedmetadata", () => {
+    video.volume = 0.5;
+    statusEl.textContent = `تم تحميل بيانات الفيديو: ${allChannels[currentIndex]?.name || "غير معروف"}`;
+    statusEl.classList.add("success");
+    videoLoading.style.display = "none";
+});
+
+video.addEventListener("error", () => {
+    statusEl.textContent = "خطأ في تحميل الفيديو. اضغط 'إعادة المحاولة' أو جرب قناة أخرى.";
+    statusEl.classList.add("error");
+    videoLoading.style.display = "none";
+    retryBtn.style.display = "inline-block";
+});
+</script>
+</body>
+</html>
