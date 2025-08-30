@@ -1,0 +1,327 @@
+<!DOCTYPE html><html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RFI Journal International</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo&display=swap" rel="stylesheet" />
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Cairo', sans-serif;
+      background: linear-gradient(135deg, #1e3c72cc, #2a5298cc),
+        url('https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEh5YZbaZdll2KJ6iGnuaZ9YvPFf9bXV0h2-EjSyOki3sKzjTdQHZAKPLTBp03nlBoQzX0HueNu5R1l_pJCeafrY2S2TZGT3J7oMvs-5_Ngf8VNzt_bxGbDpal1nL8MBh_23UehcnfvM2mOj8yIBvE9qjFM65uuAxEYUS5NHphkyK7sf0mYRQwv_ry5a1LAX/s960/1710888701235.jpg');
+      background-size: cover;
+      background-repeat: no-repeat;
+      background-position: center;
+      color: #fff;
+      text-align: center;
+      padding: 20px;
+      min-height: 100vh;
+    }.container {
+  max-width: 600px;
+  margin: auto;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 20px;
+  padding: 25px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(8px);
+}
+
+input, select, button {
+  width: 100%;
+  padding: 12px;
+  margin: 8px 0;
+  border: none;
+  border-radius: 10px;
+  font-size: 16px;
+  outline: none;
+}
+
+button {
+  background: linear-gradient(135deg, #ffcc00, #ff9900);
+  color: #000;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+button:hover {
+  opacity: 0.9;
+}
+
+.hidden { display: none; }
+#message { margin-top: 15px; font-weight: bold; }
+.success { color: #4caf50; }
+.error { color: #ff4444; }
+audio { margin-top: 15px; width: 100%; border-radius: 8px; }
+
+label {
+  font-weight: bold;
+  margin-top: 12px;
+  display: block;
+  font-size: 15px;
+}
+
+h1, h2 {
+  margin: 15px 0;
+  background: rgba(255, 255, 255, 0.15);
+  padding: 10px;
+  border-radius: 10px;
+}
+
+.lang-switch {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  font-size: 14px;
+  background: #fff;
+  color: #000;
+  padding: 6px 10px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+#logoutBtn {
+  margin-top: 10px;
+  background: linear-gradient(135deg, #ff4444, #e53935);
+  color: white;
+}
+
+  </style>
+</head>
+<body><div class="lang-switch" onclick="switchLanguage()">🌐 AR / FR</div><div class="container">
+  <h2 id="titleLogin">🔐 Veuillez entrer le mot de passe</h2>
+  <input type="password" id="password" placeholder="">
+  <button id="loginBtn">Connexion</button>  <div id="app" class="hidden">
+    <h2 id="titleApp">📻 Journal International RFI</h2><label id="labelDate">📅 Sélectionnez la date :</label>
+<input type="date" id="datePicker">
+
+<label id="labelTime">🕒 Sélectionnez l'heure :</label>
+<select id="timeSelect"></select>
+
+<button onclick="loadAudio()" id="btnPlay">▶️ Lire le journal</button>
+
+<audio id="audioPlayer" controls></audio>
+
+<h1 id="linkDisplay" data-url=""></h1>
+<button onclick="copyLink()" id="btnCopy">📋 Copier le lien</button>
+
+<label id="labelHour">⏱️ Générer un lien par heure :</label>
+<input type="number" id="hourInput" placeholder="Ex: 12">
+<button onclick="generateByHour()" id="btnGen">🔄 Générer et remplacer</button>
+
+<button onclick="updateCustomUrlDate()" id="btnUpdate">✏️ Mettre à jour la date dans le lien</button>
+
+<button onclick="logout()" id="logoutBtn">🚪 Déconnexion</button>
+
+<p id="message"></p>
+
+  </div>
+</div><script>
+  const PASSWORD = "75017998";
+  let currentLang = localStorage.getItem("rfiLang") || "fr";
+
+  const texts = {
+    fr: {
+      titleLogin: "🔐 Veuillez entrer le mot de passe",
+      loginBtn: "Connexion",
+      placeholderPassword: "Mot de passe",
+      titleApp: "📻 Journal International RFI",
+      labelDate: "📅 Sélectionnez la date :",
+      labelTime: "🕒 Sélectionnez l'heure :",
+      btnPlay: "▶️ Lire le journal",
+      btnCopy: "📋 Copier le lien",
+      labelHour: "⏱️ Générer un lien par heure :",
+      btnGen: "🔄 Générer et remplacer",
+      btnUpdate: "✏️ Mettre à jour la date dans le lien",
+      msgCopied: "✅ Lien copié.",
+      msgLoaded: "✅ Lien chargé avec succès.",
+      msgInvalidTime: "⚠️ Veuillez sélectionner la date et l'heure.",
+      msgLinkError: "❌ Le journal n'est pas disponible ou le lien est incorrect.",
+      msgNoLink: "⚠️ Aucun lien à copier.",
+      msgUpdateError: "⚠️ Vérifiez que le lien et la date sont présents.",
+      msgHourError: "⚠️ Entrez une heure valide.",
+      msgCheckLink: "⚠️ Impossible de vérifier le lien.",
+      passwordError: "❌ Mot de passe incorrect.",
+      logout: "🚪 Déconnexion"
+    },
+    ar: {
+      titleLogin: "🔐 الرجاء إدخال كلمة المرور",
+      loginBtn: "دخول",
+      placeholderPassword: "كلمة المرور",
+      titleApp: "📻 النشرة الدولية RFI",
+      labelDate: "📅 اختر التاريخ:",
+      labelTime: "🕒 اختر الساعة:",
+      btnPlay: "▶️ تشغيل النشرة",
+      btnCopy: "📋 نسخ الرابط",
+      labelHour: "⏱️ توليد رابط حسب الساعة:",
+      btnGen: "🔄 توليد واستبدال",
+      btnUpdate: "✏️ تحديث التاريخ في الرابط",
+      msgCopied: "✅ تم نسخ الرابط.",
+      msgLoaded: "✅ تم تحميل الرابط بنجاح.",
+      msgInvalidTime: "⚠️ الرجاء اختيار التاريخ والوقت.",
+      msgLinkError: "❌ الرابط غير متوفر أو غير صحيح.",
+      msgNoLink: "⚠️ لا يوجد رابط للنسخ.",
+      msgUpdateError: "⚠️ تأكد من وجود الرابط والتاريخ.",
+      msgHourError: "⚠️ أدخل ساعة صحيحة.",
+      msgCheckLink: "⚠️ لا يمكن التحقق من الرابط.",
+      passwordError: "❌ كلمة المرور خاطئة.",
+      logout: "🚪 تسجيل الخروج"
+    }
+  };
+
+  function applyLanguage() {
+    const t = texts[currentLang];
+    document.documentElement.lang = currentLang;
+    document.body.dir = currentLang === "ar" ? "rtl" : "ltr";
+    document.getElementById("titleLogin").textContent = t.titleLogin;
+    document.getElementById("loginBtn").textContent = t.loginBtn;
+    document.getElementById("password").placeholder = t.placeholderPassword;
+    document.getElementById("titleApp").textContent = t.titleApp;
+    document.getElementById("labelDate").textContent = t.labelDate;
+    document.getElementById("labelTime").textContent = t.labelTime;
+    document.getElementById("btnPlay").textContent = t.btnPlay;
+    document.getElementById("btnCopy").textContent = t.btnCopy;
+    document.getElementById("labelHour").textContent = t.labelHour;
+    document.getElementById("btnGen").textContent = t.btnGen;
+    document.getElementById("btnUpdate").textContent = t.btnUpdate;
+    document.getElementById("logoutBtn").textContent = t.logout;
+  }
+
+  function switchLanguage() {
+    currentLang = currentLang === "fr" ? "ar" : "fr";
+    localStorage.setItem("rfiLang", currentLang);
+    applyLanguage();
+  }
+
+  window.addEventListener("DOMContentLoaded", () => {
+    applyLanguage();
+    if (localStorage.getItem("rfiAccess") === "granted") {
+      document.getElementById("password").style.display = "none";
+      document.getElementById("loginBtn").style.display = "none";
+      document.getElementById("app").classList.remove("hidden");
+      fillTimeOptions();
+      document.getElementById("datePicker").valueAsDate = new Date();
+    }
+  });
+
+  document.getElementById("loginBtn").addEventListener("click", () => {
+    if (document.getElementById("password").value === PASSWORD) {
+      localStorage.setItem("rfiAccess", "granted");
+      document.getElementById("password").style.display = "none";
+      document.getElementById("loginBtn").style.display = "none";
+      document.getElementById("app").classList.remove("hidden");
+      fillTimeOptions();
+      document.getElementById("datePicker").valueAsDate = new Date();
+    } else {
+      alert(texts[currentLang].passwordError);
+    }
+  });
+
+  function logout() {
+    localStorage.removeItem("rfiAccess");
+    location.reload();
+  }
+
+  function fillTimeOptions() {
+    const options = [
+      '00h00_-_00h10_gmt', '01h00_-_01h10_gmt', '02h00_-_02h10_gmt',
+      '03h00_-_03h10_gmt', '08h00_-_08h10_gmt', '09h00_-_09h10_gmt',
+      '10h00_-_10h10_gmt', '14h00_-_14h10_gmt', '15h00_-_15h10_gmt',
+      '17h00_-_17h10_gmt', '19h00_-_19h10_gmt', '20h00_-_20h10_gmt',
+      '21h00_-_21h10_gmt', '23h00_-_23h10_gmt'
+    ];
+    const select = document.getElementById("timeSelect");
+    select.innerHTML = options.map(time =>
+      `<option value="${time}">${time.split("_")[0]} GMT</option>`
+    ).join("");
+  }
+
+  function formatDate(date) {
+    return date.toISOString().split("T")[0].replace(/-/g, "");
+  }
+
+  function loadAudio() {
+    const date = new Date(document.getElementById("datePicker").value);
+    const timeSegment = document.getElementById("timeSelect").value;
+    if (!date || !timeSegment) {
+      showMessage(texts[currentLang].msgInvalidTime, "error");
+      return;
+    }
+    const url = `https://aod-rfi.akamaized.net/rfi/francais/audio/journaux/r001/journal_international_${timeSegment}_${formatDate(date)}.mp3`;
+    const displayTime = timeSegment.split("_")[0].replace("h", ":");
+    setAudio(url, displayTime);
+  }
+
+  function generateByHour() {
+    const hour = document.getElementById("hourInput").value;
+    const datePickerValue = document.getElementById("datePicker").value;
+
+    if (!hour || isNaN(hour)) {
+      showMessage(texts[currentLang].msgHourError, "error");
+      return;
+    }
+
+    if (!datePickerValue) {
+      showMessage(texts[currentLang].msgInvalidTime, "error");
+      return;
+    }
+
+    const date = formatDate(new Date(datePickerValue));
+    const hh = String(hour).padStart(2, "0");
+    const url = `https://aod-rfi.akamaized.net/rfi/francais/audio/tranchesinfo/r001/tranche_international_${hh}h00_-_${hh}h30_gmt_${date}.mp3`;
+    setAudio(url, `${hh}:00`);
+  }
+
+  function updateCustomUrlDate() {
+    const h1 = document.getElementById("linkDisplay");
+    const url = h1.getAttribute("data-url");
+    const date = document.getElementById("datePicker").value;
+    if (!url || !date) {
+      showMessage(texts[currentLang].msgUpdateError, "error");
+      return;
+    }
+    const newDate = formatDate(new Date(date));
+    const updatedUrl = url.replace(/\d{8}(?=\.mp3)/, newDate);
+    setAudio(updatedUrl);
+  }
+
+  async function setAudio(url, time = "") {
+    try {
+      const response = await fetch(url, { method: "HEAD" });
+      if (response.ok) {
+        document.getElementById("audioPlayer").src = url;
+        updateLinkDisplay(url, time);
+        showMessage(texts[currentLang].msgLoaded, "success");
+      } else {
+        showMessage(texts[currentLang].msgLinkError, "error");
+      }
+    } catch {
+      showMessage(texts[currentLang].msgCheckLink, "error");
+    }
+  }
+
+  function updateLinkDisplay(url, time = "") {
+    const h1 = document.getElementById("linkDisplay");
+    const date = document.getElementById("datePicker").value || "—";
+    h1.textContent = `📅 ${date} 🕒 ${time} — Lien généré`;
+    h1.setAttribute("data-url", url);
+  }
+
+  function copyLink() {
+    const url = document.getElementById("linkDisplay").getAttribute("data-url");
+    if (!url) {
+      showMessage(texts[currentLang].msgNoLink, "error");
+      return;
+    }
+    navigator.clipboard.writeText(url).then(() => {
+      showMessage(texts[currentLang].msgCopied, "success");
+    });
+  }
+
+  function showMessage(message, type) {
+    const msg = document.getElementById("message");
+    msg.textContent = message;
+    msg.className = type;
+  }
+</script></body>
+</html>
